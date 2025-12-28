@@ -7,4 +7,4 @@
   - 2342(Dance Dance Revolution)
   - 2239(스도쿠)
 ## 달성 여부
--
+- 성공
