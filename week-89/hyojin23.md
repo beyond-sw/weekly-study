@@ -12,4 +12,4 @@
   - 2강 Bits ints Part1
   - https://www.youtube.com/watch?v=SIHjTvIM1EQ&list=PLyboo2CCDSWnhzzzzDQ3OBPrRiIjl-aIE&index=2
 ## 달성 여부
-  - 실패
+  - 
