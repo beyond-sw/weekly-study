@@ -2,14 +2,14 @@
 
 - 백준 문제풀기
   - 복습
-    - 14501(퇴사)
-    - 15686(치킨 배달)
-    - 1715(카드 정렬하기)
-    - 1697(숨바꼭질)
+    - 1916(최소비용 구하기)
+    - 17298(오큰수)
+    - 1520(내리막길)
+    - 2573(빙산)
   - 신규
     - 2234(성곽)
 - Computer Systems: A Programmer's Perspective (CS:APP) 강의 듣기
   - 2강 Bits ints Part1
   - https://www.youtube.com/watch?v=SIHjTvIM1EQ&list=PLyboo2CCDSWnhzzzzDQ3OBPrRiIjl-aIE&index=2
 ## 달성 여부
-  - 실패(복습은 완료했으나 신규 문제 및 강의 듣기 실패..)
+  - 
