@@ -1,2 +1,5 @@
 .idea/
 *.iml
+.superpowers/
+__pycache__/
+_site/

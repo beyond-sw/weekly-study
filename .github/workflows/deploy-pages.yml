@@ -1,0 +1,50 @@
+name: 페이지 배포
+
+on:
+  push:
+    branches: [main]
+  # 새 주차가 시작되면 진행 중 주차 표시가 넘어가도록 매일 한 번 다시 만든다.
+  schedule:
+    - cron: '20 23 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: 사이트 만들기
+        run: |
+          python scripts/build_site.py \
+            --out _site \
+            --repo "${{ github.repository }}" \
+            --branch "${{ github.event.repository.default_branch }}"
+
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
