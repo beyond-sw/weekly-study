@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
 """손으로 쓰다 생기는 형식 오류를 잡는다.
 
-- 주차 폴더에 두 사람 파일이 다 있는지
-- ## 목표 / ## 달성 여부 섹션이 살아 있는지
+- 있는 기록 파일의 ## 목표 / ## 달성 여부 섹션이 살아 있는지
 - 달성 여부에 실퍠 같은 오타가 없는지
 - README 일정 줄이 주차 공식과 맞는지
+
+한 사람만 먼저 올린 주차는 상대 파일이 없어도 된다.
+없는 파일은 건너뛴다.
 """
 
 from __future__ import annotations
@@ -41,7 +43,6 @@ def check_entries(root: Path, errors: list[str], warnings: list[str]) -> None:
             rel = path.relative_to(root).as_posix()
 
             if not path.is_file():
-                errors.append(f"{rel}: 파일이 없습니다")
                 continue
 
             content = path.read_text(encoding="utf-8")
