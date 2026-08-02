@@ -33,7 +33,6 @@
 
   /* 실제 높이는 JS가 재서 넣는다. 값이 없을 때를 대비한 기본치. */
   --topbar-h: 62px;
-  --pr-bar-h: 0px;
 }
 
 :root[data-theme="light"] {
@@ -74,9 +73,6 @@ body {
         "Pretendard", "Noto Sans KR", sans-serif;
   padding-bottom: calc(28px + env(safe-area-inset-bottom));
 }
-
-/* PR 바가 떠 있을 때만 그만큼 아래 여백을 준다. 평소엔 빈 공간을 두지 않는다. */
-body.has-pr-bar { padding-bottom: calc(var(--pr-bar-h) + 16px + env(safe-area-inset-bottom)); }
 
 /* 시트가 열려 있는 동안 뒤 화면이 따라 스크롤되지 않게 한다. */
 body.modal-open { overflow: hidden; }
@@ -301,26 +297,6 @@ body.scrolled .brand p { max-height: 0; opacity: 0; margin-top: 0; }
 
 .grid-caption { margin: 8px 0 0; font-size: 11px; color: var(--muted); }
 
-/* ---------- PR 바 ---------- */
-
-.pr-bar {
-  position: fixed; left: 0; right: 0; bottom: 0; z-index: 30;
-  background: var(--bg); border-top: 1px solid var(--line);
-  padding-bottom: env(safe-area-inset-bottom);
-}
-
-.pr-bar-inner {
-  display: flex; align-items: center; gap: 12px;
-  max-width: 1100px; margin: 0 auto;
-  padding: 10px var(--pad-r) 10px var(--pad-l);
-}
-
-.pr-info { display: flex; flex-direction: column; min-width: 0; flex: 1; }
-.pr-title { font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.pr-sub { font-size: 11px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.pr-actions { display: flex; gap: 10px; flex: none; }
-.pr-actions .btn { min-height: 40px; padding: 0 14px; font-size: 13px; }
-
 /* ---------- 시트 ---------- */
 
 /* 브라우저 기본 dialog는 max-width/max-height를 calc(100% - 6px - 2em)으로 잡아
@@ -405,8 +381,6 @@ textarea {
   font-size: 13px; font-weight: 600; text-align: center;
   overflow-wrap: anywhere;
 }
-
-body.has-pr-bar .toast { bottom: calc(var(--pr-bar-h) + 12px + env(safe-area-inset-bottom)); }
 
 /* ---------- 넓은 화면 ---------- */
 

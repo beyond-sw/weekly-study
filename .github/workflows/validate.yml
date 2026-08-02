@@ -1,11 +1,6 @@
 name: 기록 형식 검사
 
 on:
-  pull_request:
-    paths:
-      - 'week-*/**'
-      - 'README.md'
-      - 'scripts/**'
   push:
     branches: [main]
     paths:

@@ -7,22 +7,25 @@
 
 주차 폴더를 만들고 README 일정을 적는 일은 자동으로 처리됩니다. 나머지는 휴대폰에서 페이지를 열어 끝낼 수 있습니다.
 
-1. 일요일 오전 8시, `주차 준비` 워크플로가 `week{N}_plan` 브랜치에 이번 주 폴더와 README 일정을 만들고 `Week {N} Plan` PR을 엽니다.
-2. 페이지에서 각자 이번 주 목표를 쓰고, 지난 주차 달성 여부를 `성공` / `실패` 버튼으로 남깁니다. 저장은 그 PR 브랜치로 들어갑니다.
-3. 페이지 아래 `머지` 버튼을 누르면 main에 반영되고, 페이지가 다시 만들어집니다. 머지가 막히면 `PR 열기` 로 넘어가 GitHub에서 처리합니다.
+1. 일요일 오전 8시, `주차 준비` 워크플로가 이번 주 폴더와 README 일정을 main에 바로 올립니다.
+2. 페이지에서 각자 이번 주 목표를 쓰고, 지난 주차 달성 여부를 `성공` / `실패` 버튼으로 남깁니다. 누르는 즉시 main에 커밋됩니다.
+3. 커밋될 때마다 배포가 돌아 1분쯤 뒤 페이지에 반영됩니다. 그동안에도 토큰을 넣은 브라우저에서는 방금 쓴 내용이 그대로 보입니다.
+
+브랜치도 PR도 쓰지 않으므로 머지할 것이 없습니다. 두 사람이 같은 순간에 저장해도 각자 자기 파일만 건드리고, 커밋이 겹치면 페이지가 알아서 다시 시도합니다.
 
 ## 페이지에서 쓰려면
 
 `설정`에서 본인을 고르고 GitHub 토큰을 한 번 넣어두면 됩니다. 토큰은 그 브라우저에만 남고 GitHub로만 전송됩니다.
 
 - [fine-grained 토큰](https://github.com/settings/personal-access-tokens/new)을 이 저장소 하나에만 권한을 주어 만듭니다.
-- 필요한 권한은 `Contents` 읽기/쓰기, `Pull requests` 읽기/쓰기입니다.
+- 필요한 권한은 `Contents` 읽기/쓰기입니다.
 - 토큰을 넣지 않으면 페이지는 읽기 전용으로 동작합니다.
 
 ## 저장소 설정 (최초 1회)
 
 - `Settings > Pages` 에서 Source를 `GitHub Actions` 로 지정
-- `Settings > Actions > General` 에서 Workflow permissions를 `Read and write`, `Allow GitHub Actions to create and approve pull requests` 를 켜기
+- `Settings > Actions > General` 에서 Workflow permissions를 `Read and write` 로 지정
+- `Settings > Branches` 에서 main에 PR 필수 같은 보호 규칙을 걸지 않기 (워크플로와 페이지가 모두 main에 직접 커밋합니다)
 
 ## 스크립트
 

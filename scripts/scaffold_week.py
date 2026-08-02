@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """이번 주 폴더와 두 사람의 빈 기록 파일을 만들고 README 일정에 한 줄을 더한다.
 
-git 조작과 PR 생성은 워크플로가 맡는다. 이 스크립트는 파일만 건드리므로
+git 조작은 워크플로가 맡는다. 이 스크립트는 파일만 건드리므로
 로컬에서 그냥 실행해 봐도 안전하다.
 """
 
@@ -79,7 +79,6 @@ def emit_outputs(*, changed: bool, week: int) -> None:
     with open(target, "a", encoding="utf-8") as fh:
         fh.write(f"changed={'true' if changed else 'false'}\n")
         fh.write(f"week={week}\n")
-        fh.write(f"branch=week{week}_plan\n")
 
 
 def main() -> int:

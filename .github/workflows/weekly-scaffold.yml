@@ -13,7 +13,6 @@ on:
 
 permissions:
   contents: write
-  pull-requests: write
 
 concurrency:
   group: weekly-scaffold
@@ -24,6 +23,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          # 아래 rebase가 얕은 클론에서 막히지 않도록 전체 이력을 받는다.
+          fetch-depth: 0
 
       - uses: actions/setup-python@v5
         with:
@@ -40,43 +42,17 @@ jobs:
             python scripts/scaffold_week.py
           fi
 
-      - name: 브랜치가 이미 있는지 확인
+      - name: 커밋해서 올리기
         if: steps.scaffold.outputs.changed == 'true'
-        id: branch
-        run: |
-          if git ls-remote --exit-code --heads origin "${{ steps.scaffold.outputs.branch }}" >/dev/null 2>&1; then
-            echo "exists=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "exists=false" >> "$GITHUB_OUTPUT"
-          fi
-
-      - name: 커밋하고 PR 열기
-        if: steps.scaffold.outputs.changed == 'true' && steps.branch.outputs.exists == 'false'
         env:
-          GH_TOKEN: ${{ github.token }}
           WEEK: ${{ steps.scaffold.outputs.week }}
-          BRANCH: ${{ steps.scaffold.outputs.branch }}
-          SITE: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/
+          BRANCH: ${{ github.event.repository.default_branch }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git switch -c "$BRANCH"
           git add -A
           git commit -m "${WEEK}주차 준비"
-          git push -u origin "$BRANCH"
-          gh pr create \
-            --base "${{ github.event.repository.default_branch }}" \
-            --head "$BRANCH" \
-            --title "Week ${WEEK} Plan" \
-            --body "$(cat <<EOF
-          ${WEEK}주차 폴더와 README 일정을 자동으로 만들었습니다.
 
-          휴대폰에서 [weekly study](${SITE}) 를 열고
-
-          1. 각자 ${WEEK}주차 목표를 쓰고
-          2. 지난 주차 달성 여부를 성공 / 실패 버튼으로 남긴 다음
-          3. 아래 머지 버튼을 누르면 끝납니다.
-
-          이 PR 브랜치(\`${BRANCH}\`)에 저장되고, 머지하면 페이지에 반영됩니다.
-          EOF
-          )"
+          # 워크플로가 도는 사이 페이지에서 저장한 커밋이 있으면 그 위에 얹는다.
+          git pull --rebase origin "$BRANCH"
+          git push origin "HEAD:${BRANCH}"

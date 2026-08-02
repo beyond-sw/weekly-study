@@ -20,11 +20,9 @@
     week: null,
     token: localStorage.getItem(LS_TOKEN) || '',
     me: localStorage.getItem(LS_ME) || '',
-    openPRs: new Map(),
   };
 
   let scrollWeekIntoView = true;
-  let measureBars = () => {};
 
   const $ = (sel) => document.querySelector(sel);
   const el = (tag, props = {}, kids = []) => {
@@ -89,24 +87,15 @@
   function trackBarHeights() {
     const root = document.documentElement;
     const topbar = $('.topbar');
-    const prBar = $('#pr-bar');
 
     const measure = () => {
       root.style.setProperty('--topbar-h', `${Math.round(topbar.getBoundingClientRect().height)}px`);
-      const prHeight = prBar.hidden ? 0 : Math.round(prBar.getBoundingClientRect().height);
-      root.style.setProperty('--pr-bar-h', `${prHeight}px`);
-      document.body.classList.toggle('has-pr-bar', prHeight > 0);
     };
 
     measure();
-    if (window.ResizeObserver) {
-      const observer = new ResizeObserver(measure);
-      observer.observe(topbar);
-      observer.observe(prBar);
-    }
+    if (window.ResizeObserver) new ResizeObserver(measure).observe(topbar);
     window.addEventListener('resize', measure);
     window.addEventListener('orientationchange', measure);
-    return measure;
   }
 
   /**
@@ -282,7 +271,8 @@
     };
     if (state.token) headers.Authorization = `Bearer ${state.token}`;
     if (options.body) headers['Content-Type'] = 'application/json';
-    return fetch(API + path, { ...options, headers });
+    // 인증 응답에는 max-age=60이 붙는다. 캐시된 sha로 쓰면 충돌하므로 항상 새로 받는다.
+    return fetch(API + path, { ...options, cache: 'no-store', headers });
   }
 
   async function ghError(res) {
@@ -296,61 +286,44 @@
 
   const encodePath = (p) => p.split('/').map(encodeURIComponent).join('/');
 
-  /** 쓰기 대상 브랜치. 열린 주차 PR이 있으면 그쪽으로 커밋한다. */
-  function writeBranch() {
-    const preferred = `week${state.data.currentWeek}_plan`;
-    if (state.openPRs.has(preferred)) return preferred;
-    if (state.openPRs.size === 1) return [...state.openPRs.keys()][0];
-    return state.data.defaultBranch;
-  }
-
-  function activePR() {
-    return state.openPRs.get(writeBranch()) || null;
-  }
-
+  /** 섹션 하나만 갈아끼워 기본 브랜치에 커밋한다. */
   async function commitSection(path, heading, body, message) {
-    const branch = writeBranch();
+    const branch = state.data.defaultBranch;
     const url = `/repos/${state.data.repo}/contents/${encodePath(path)}`;
 
-    const current = await gh(`${url}?ref=${encodeURIComponent(branch)}`);
-    let sha = null;
-    let content = '';
-    if (current.ok) {
-      const json = await current.json();
-      sha = json.sha;
-      content = b64decode(json.content);
-    } else if (current.status !== 404) {
-      throw new Error(await ghError(current));
-    }
-
-    const next = replaceSection(content.trim() ? content : TEMPLATE, heading, body);
-    const res = await gh(url, {
-      method: 'PUT',
-      body: JSON.stringify({ message, content: b64encode(next), branch, ...(sha ? { sha } : {}) }),
-    });
-    if (!res.ok) throw new Error(await ghError(res));
-    return branch;
-  }
-
-  async function loadOpenPRs() {
-    state.openPRs = new Map();
-    if (!state.token) return;
-    try {
-      const res = await gh(`/repos/${state.data.repo}/pulls?state=open&per_page=50`);
-      if (!res.ok) return;
-      for (const pr of await res.json()) {
-        state.openPRs.set(pr.head.ref, pr);
+    const attempt = async () => {
+      const current = await gh(`${url}?ref=${encodeURIComponent(branch)}`);
+      let sha = null;
+      let content = '';
+      if (current.ok) {
+        const json = await current.json();
+        sha = json.sha;
+        content = b64decode(json.content);
+      } else if (current.status !== 404) {
+        throw new Error(await ghError(current));
       }
-    } catch { /* 오프라인이어도 읽기는 계속 동작한다 */ }
+
+      const next = replaceSection(content.trim() ? content : TEMPLATE, heading, body);
+      return gh(url, {
+        method: 'PUT',
+        body: JSON.stringify({ message, content: b64encode(next), branch, ...(sha ? { sha } : {}) }),
+      });
+    };
+
+    // 둘이 같은 순간에 저장하면 브랜치가 밀려 409나 422가 난다.
+    // 섹션 하나만 덮어쓰므로 다시 읽어 다시 얹으면 상대 변경을 지우지 않는다.
+    let res = await attempt();
+    if (res.status === 409 || res.status === 422) res = await attempt();
+    if (!res.ok) throw new Error(await ghError(res));
   }
 
   /**
-   * data.json은 기본 브랜치 기준으로 만들어진다. 아직 머지하지 않은 PR 브랜치에
-   * 쓴 내용이 사라진 것처럼 보이지 않도록 최근 두 주차만 덮어써서 읽는다.
+   * data.json은 배포 시점에 만들어져서 방금 저장한 내용이 아직 빠져 있을 수 있다.
+   * 배포를 기다리지 않도록 최근 두 주차만 기본 브랜치에서 다시 읽어 덮어쓴다.
    */
-  async function overlayBranch() {
-    const branch = writeBranch();
-    if (!state.token || branch === state.data.defaultBranch) return;
+  async function overlayLatest() {
+    if (!state.token) return;
+    const branch = state.data.defaultBranch;
 
     const targets = [state.data.currentWeek, state.data.currentWeek - 1]
       .map(weekByNumber)
@@ -595,27 +568,9 @@
     detail.append(peers);
   }
 
-  function renderPRBar() {
-    const bar = $('#pr-bar');
-    const pr = activePR();
-
-    if (pr) {
-      bar.hidden = false;
-      $('#pr-title').textContent = `#${pr.number} ${pr.title}`;
-      $('#pr-sub').textContent = '여기에 저장됩니다 · 머지하면 페이지에 반영';
-      $('#pr-link').href = pr.html_url;
-      $('#pr-merge').disabled = false;
-    } else {
-      bar.hidden = true;
-    }
-
-    measureBars();
-  }
-
   function render() {
     renderWeekList();
     renderDetail();
-    renderPRBar();
   }
 
   function selectWeek(number) {
@@ -627,9 +582,11 @@
 
   /* ---------- 쓰기 동작 ---------- */
 
+  const SAVED = '저장했습니다. 잠시 뒤 페이지에 반영됩니다.';
+
   async function saveStatus(week, person, body) {
     try {
-      const branch = await commitSection(
+      await commitSection(
         week.entries[person].path,
         '## 달성 여부',
         body,
@@ -641,7 +598,7 @@
       entry.status = classifyStatus(text);
       recomputeStreaks();
       render();
-      toast(`${branch}에 저장했습니다.`);
+      toast(SAVED);
       return true;
     } catch (err) {
       toast(`저장 실패: ${err.message}`);
@@ -651,7 +608,7 @@
 
   async function saveGoals(week, person, body) {
     try {
-      const branch = await commitSection(
+      await commitSection(
         week.entries[person].path,
         '## 목표',
         body,
@@ -662,32 +619,11 @@
       entry.goalsMarkdown = entry.goals.length ? body.trim() : '';
       entry.exists = true;
       render();
-      toast(`${branch}에 저장했습니다.`);
+      toast(SAVED);
       return true;
     } catch (err) {
       toast(`저장 실패: ${err.message}`);
       return false;
-    }
-  }
-
-  async function mergeActivePR() {
-    const pr = activePR();
-    if (!pr) return;
-
-    try {
-      const res = await gh(`/repos/${state.data.repo}/pulls/${pr.number}/merge`, {
-        method: 'PUT',
-        body: JSON.stringify({ merge_method: 'merge' }),
-      });
-      if (!res.ok) throw new Error(await ghError(res));
-
-      state.openPRs.delete(pr.head.ref);
-      renderPRBar();
-      toast('머지했습니다. 잠시 뒤 페이지가 갱신됩니다.');
-    } catch (err) {
-      // 충돌이나 권한 문제로 API 머지가 막히면 GitHub에서 처리하도록 넘긴다.
-      toast(`머지 실패: ${err.message} — 'PR 열기'로 진행하세요.`);
-      $('#pr-link').focus();
     }
   }
 
@@ -775,9 +711,8 @@
         if (state.token) localStorage.setItem(LS_TOKEN, state.token);
         else localStorage.removeItem(LS_TOKEN);
 
-        await loadOpenPRs();
         render();
-        await overlayBranch();
+        await overlayLatest();
         render();
         $('#settings').close();
         toast(state.token ? '설정을 저장했습니다.' : '읽기 전용으로 전환했습니다.');
@@ -788,7 +723,6 @@
       state.token = '';
       localStorage.removeItem(LS_TOKEN);
       $('#token').value = '';
-      state.openPRs = new Map();
       $('#settings').close();
       render();
       toast('토큰을 지웠습니다.');
@@ -803,10 +737,6 @@
       withBusy(event.currentTarget, async () => {
         if (await save(value)) $('#editor').close();
       });
-    });
-
-    $('#pr-merge').addEventListener('click', (event) => {
-      withBusy(event.currentTarget, mergeActivePR);
     });
 
     setUpSheet($('#settings'));
@@ -839,12 +769,10 @@
     wireEvents();
     trackViewportHeight();
     trackScrolled();
-    measureBars = trackBarHeights();
+    trackBarHeights();
 
     render();
-    await loadOpenPRs();
-    render();
-    await overlayBranch();
+    await overlayLatest();
     render();
   }
 
