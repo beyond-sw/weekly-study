@@ -20,14 +20,14 @@ concurrency:
 
 jobs:
   scaffold:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           # 아래 rebase가 얕은 클론에서 막히지 않도록 전체 이력을 받는다.
           fetch-depth: 0
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: '3.12'
 
